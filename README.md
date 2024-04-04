@@ -1,5 +1,3 @@
-Certainly! Let's break down the code for the Analytic Hierarchy Process (AHP) implementation using Tkinter:
-
 1. **Imports:**
    - `tkinter`: Tkinter is the standard GUI library for Python. It provides classes for creating GUI applications.
    - `ttk`: The `ttk` module provides access to the Tk themed widget set.
