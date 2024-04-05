@@ -1,58 +1,24 @@
-import tkinter as tk
-from tkinter import ttk
-from tkinter import messagebox
+# Hatem Yazidi 2024 
+import PySimpleGUI as sg
 import numpy as np
 
 class AHP_GUI:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("AHP Evaluation of Wave Energy Implementation")
-        
-        # Criteria and alternatives
+    def __init__(self):
         self.criteria = ["Costal zone", "Wave steepness", "Wind speed", "DEGIE", "Wave intensity", "Wave period", "Water density"]
         self.alternatives = ["Wave Energy Converter A",
                              "Wave Energy Converter B",
                              "Wave Energy Converter C",
                              "Wave Energy Converter D"]
-        
-        # Frame for criteria weights
-        self.criteria_frame = ttk.LabelFrame(root, text="Criteria Weights")
-        self.criteria_frame.pack(padx=10, pady=5, fill="both", expand=True)
-        
-        # Frame for alternative scores
-        self.alternatives_frame = ttk.LabelFrame(root, text="Alternative Scores")
-        self.alternatives_frame.pack(padx=10, pady=5, fill="both", expand=True)
-        
-        # Initialize variables for criteria weights
-        self.criteria_weights = {}
-        self.criteria_vars = []
-        
-        # Initialize variables for alternative scores
-        self.alternative_scores = {}
-        self.alternative_vars = []
-        
-        # Create input fields for criteria weights
-        for i, crit in enumerate(self.criteria):
-            var = tk.DoubleVar(value=1.0)
-            self.criteria_vars.append(var)
-            label = ttk.Label(self.criteria_frame, text=crit)
-            label.grid(row=i, column=0, padx=5, pady=2, sticky="w")
-            entry = ttk.Entry(self.criteria_frame, textvariable=var)
-            entry.grid(row=i, column=1, padx=5, pady=2)
-        
-        # Create input fields for alternative scores
-        for i, alt in enumerate(self.alternatives):
-            var = tk.DoubleVar(value=1.0)
-            self.alternative_vars.append(var)
-            label = ttk.Label(self.alternatives_frame, text=alt)
-            label.grid(row=i, column=0, padx=5, pady=2, sticky="w")
-            entry = ttk.Entry(self.alternatives_frame, textvariable=var)
-            entry.grid(row=i, column=1, padx=5, pady=2)
-        
-        # Button to calculate
-        calculate_button = ttk.Button(root, text="Calculate", command=self.calculate)
-        calculate_button.pack(pady=10)
-        
+
+        self.layout = [
+            [sg.Text("Criteria Weights")],
+            *[[sg.Text(crit), sg.InputText(default_text="1.0", size=(10, 1), key=f"-CRITERIA_{i}-")] for i, crit in enumerate(self.criteria)],
+            [sg.Text("Alternative Scores")],
+            *[[sg.Text(alt), sg.InputText(default_text="1.0", size=(10, 1), key=f"-ALTERNATIVE_{i}-")] for i, alt in enumerate(self.alternatives)],
+            [sg.Button("Calculate"), sg.Button("Exit")],
+            [sg.Text("Copyright GazEol Renouvelable 2024", size=(30, 1), justification='right', text_color='gray')]
+        ]
+
     def pairwise_comparison(self, matrix):
         n = len(matrix)
         pairwise_comparisons = np.zeros((n, n))
@@ -65,7 +31,7 @@ class AHP_GUI:
                 else:
                     pairwise_comparisons[i][j] = 1 / pairwise_comparisons[j][i]
         return pairwise_comparisons
-    
+
     def calculate_weights(self, pairwise_matrix):
         n = len(pairwise_matrix)
         eigenvalues, eigenvectors = np.linalg.eig(pairwise_matrix)
@@ -73,45 +39,45 @@ class AHP_GUI:
         principal_eigenvector = eigenvectors[:, max_eigenvalue_index].real
         weights = principal_eigenvector / sum(principal_eigenvector)
         return weights
-    
+
     def normalize_scores(self, scores):
         total_score = sum(scores.values())
         normalized_scores = {alt: score / total_score for alt, score in scores.items()}
         return normalized_scores
-    
-    def calculate(self):
-        # Get criteria weights from input fields
-        for i, crit in enumerate(self.criteria):
-            self.criteria_weights[crit] = self.criteria_vars[i].get()
-        
-        # Pairwise comparisons for criteria
-        criteria_matrix = np.zeros((len(self.criteria), len(self.criteria)))
-        for i in range(len(self.criteria)):
-            for j in range(len(self.criteria)):
-                criteria_matrix[i][j] = self.criteria_vars[i].get() / self.criteria_vars[j].get()
-        
-        criteria_pairwise = self.pairwise_comparison(criteria_matrix)
-        
-        # Calculate criteria weights
-        criteria_weights = self.calculate_weights(criteria_pairwise)
-        
-        # Get alternative scores from input fields
-        for i, alt in enumerate(self.alternatives):
-            self.alternative_scores[alt] = self.alternative_vars[i].get()
-        
-        # Normalize scores
-        normalized_scores = self.normalize_scores(self.alternative_scores)
-        
-        # Rank alternatives
-        ranked_alternatives = sorted(normalized_scores.items(), key=lambda x: x[1], reverse=True)
-        
-        # Show results
-        result_str = "Ranked alternatives:\n"
-        for i, (alt, score) in enumerate(ranked_alternatives):
-            result_str += f"{i+1}. {alt}: {score:.2f}\n"
-        messagebox.showinfo("Results", result_str)
 
-# Create main window
-root = tk.Tk()
-app = AHP_GUI(root)
-root.mainloop()
+    def run(self):
+        window = sg.Window("AHP Evaluation of Wave Energy Implementation", self.layout, size=(600, 450))  # Specify size
+
+        while True:
+            event, values = window.Read()
+
+            if event == '__TIMEOUT__' or event == "Exit":
+                break
+
+            if event == "Calculate":
+                criteria_weights = [float(values[f"-CRITERIA_{i}-"]) for i in range(len(self.criteria))]
+
+                criteria_matrix = np.zeros((len(self.criteria), len(self.criteria)))
+                for i in range(len(self.criteria)):
+                    for j in range(len(self.criteria)):
+                        criteria_matrix[i][j] = float(values[f"-CRITERIA_{i}-"]) / float(values[f"-CRITERIA_{j}-"])
+
+                criteria_pairwise = self.pairwise_comparison(criteria_matrix)
+                criteria_weights = self.calculate_weights(criteria_pairwise)
+
+                alternative_scores = {self.alternatives[i]: float(values[f"-ALTERNATIVE_{i}-"]) for i in range(len(self.alternatives))}
+                normalized_scores = self.normalize_scores(alternative_scores)
+
+                ranked_alternatives = sorted(normalized_scores.items(), key=lambda x: x[1], reverse=True)
+
+                result_str = "Ranked alternatives:\n"
+                for i, (alt, score) in enumerate(ranked_alternatives):
+                    result_str += f"{i+1}. {alt}: {score:.2f}\n"
+
+                sg.Popup("Results", result_str)
+
+        window.close()
+
+# Create instance and run the application
+app = AHP_GUI()
+app.run()
